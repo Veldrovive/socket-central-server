@@ -16,18 +16,22 @@ io.on("connection", (socket) => {
 			registered_clients[name] = {
 				socket: socket,
 				id: shortid.generate(),
-				connected: true
+				connected: true,
+				lastConnected: Date.now()
 			}
 			socket.emit("registered");
+			if(ack) ack({success: true, newClient: true});
 			console.log("Resistered new client",name);
 		}else if(!registered_clients[name].connected){
 			registered_clients[name].socket = socket;
 			registered_clients[name].connected = true;
+			registered_clients[name].lastConnected = Date.now();
 			socket.emit("registered");
-			ack(true);
+			if(ack) ack({success: true, newClient: false});
 			console.log("Registered old client",name);
 		}else{
-			socket.emit("register_failed", {error: 450, message: "Client already connected"});
+			socket.emit("register_failed", {success: false, error: 450, message: "Client already connected"});
+			if(ack) ack({success: false, error: 450, message: "Client already connected"});
 			socket.disconnect();
 			console.log("Failed to register client",name,"since it was already connected");
 		}
@@ -39,10 +43,10 @@ io.on("connection", (socket) => {
 		const client = registered_clients[appName];
 		if(client){
 			socket.emit("get_id_successful", client.id);
-			ack({success: true, id: client.id});
+			if(ack) ack({success: true, id: client.id});
 		}else{
 			socket.emit("get_id_failed", {error: 440, message: "Client not registered"});
-			ack({success: false, error: 440, message: "Client not registered"});
+			if(ack) ack({success: false, error: 440, message: "Client not registered"});
 		}
 	})
 
@@ -52,7 +56,7 @@ io.on("connection", (socket) => {
 			clients.push([name, registered_clients[name].id, registered_clients[name].connected]);
 		})
 		socket.emit("get_clients_successful", clients);
-		ack(clients);
+		if(ack) ack(clients);
 	})
 
 	socket.on("command", (data={}, ack) => {
@@ -61,15 +65,15 @@ io.on("connection", (socket) => {
 		if(target){
 			const client = registered_clients[target];
 			if(!client){
-				ack({success: false, error: 440, message: "Client not registered"});
+				if(ack) ack({success: false, error: 440, message: "Client not registered"});
 				return socket.emit("command_failed", {success: false, error: 440, message: "Client not registered"});
 			}else{
 				if(!client.connected) {
-					ack({success: false, error: 441, message: "Client not connected"});
+					if(ack) ack({success: false, error: 441, message: "Client not connected"});
 					return socket.emit("command_failed", {success: false, error: 441, message: "Client not connected"});
 				}
 				client.socket.emit("command", {command: command, meta: meta});
-				ack({success: true});
+				if(ack) ack({success: true});
 				return socket.emit("command_successful");
 			}
 		}else{
@@ -78,7 +82,7 @@ io.on("connection", (socket) => {
 			}else{
 				socket.broadcast.emit("command", {command: command, meta: meta});
 			}
-			ack({success: true});
+			if(ack) ack({success: true});
 			return socket.emit("command_successful");
 		}
 	})

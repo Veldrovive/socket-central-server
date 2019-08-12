@@ -66,18 +66,30 @@ io.on("connection", (socket) => {
 		console.log("Relaying",data);
 		const {mirror=false, target, command, meta} = data;
 		if(target){
-			const client = registered_clients[target];
-			if(!client){
-				if(ack) ack({success: false, error: 440, message: "Client not registered"});
-				return socket.emit("command_failed", {success: false, error: 440, message: "Client not registered"});
-			}else{
-				if(!client.connected) {
+			if(typeof(target) === "string"){
+				const client = registered_clients[target];
+				if(!client){
+					if(ack) ack({success: false, error: 440, message: "Client not registered"})
+				}else if(!client.connected){
 					if(ack) ack({success: false, error: 441, message: "Client not connected"});
-					return socket.emit("command_failed", {success: false, error: 441, message: "Client not connected"});
+				}else{
+					if(ack) ack({success: true});
+					client.socket.emit("command", {command: command, meta: meta});
 				}
-				client.socket.emit("command", {command: command, meta: meta});
-				if(ack) ack({success: true});
-				return socket.emit("command_successful");
+			}else{
+				const targetSuccesses = {};
+				target.forEach(clientName => {
+					const client = registered_clients[clientName];
+					if(!client){
+						targetSuccesses[clientName] = {success: false, error: 440, message: "Client not registered"};
+					}else if(!client.connected){
+						targetSuccesses[clientName] = {success: false, error: 441, message: "Client not connected"};
+					}else{
+						targetSuccesses[clientName] = {success: true};
+						client.socket.emit("command", {command: command, meta: meta});
+					}
+				})
+				if(ack) ack({success: true, targets: targetSuccesses});
 			}
 		}else{
 			if(mirror){

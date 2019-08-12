@@ -1,5 +1,4 @@
-const config = require("./config");
-const io = require('socket.io')(81);
+const io = require('socket.io')(process.env.PORT || 80);
 const shortid = require("shortid");
 
 console.log("Server starting");

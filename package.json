@@ -5,6 +5,12 @@
   "main": "index.js",
   "author": "Aidan Dempster",
   "license": "MIT",
+  "scripts": {
+  	"start": "node server.js"
+  },
+  "engines": {
+    "node": "12.x"
+  },
   "dependencies": {
     "shortid": "^2.2.14",
     "socket.io": "^2.2.0",

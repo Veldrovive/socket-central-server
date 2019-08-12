@@ -1,4 +1,4 @@
-var socket = require('socket.io-client')('http://localhost:81');
+var socket = require('socket.io-client')('http://localhost:80');
 console.log("Attempting to connect");
 
 socket.on("command", (data) => {

@@ -4,6 +4,7 @@ const shortid = require("shortid");
 console.log("Server starting");
 
 const registered_clients = {};
+const past_commands = [];
 
 io.on("connection", (socket) => {
 	let name;
@@ -55,16 +56,22 @@ io.on("connection", (socket) => {
 		Object.keys(registered_clients).forEach(name => {
 			clients[name] = {
 				id: registered_clients[name].id,
-				connected: registered_clients[name].connected
+				connected: registered_clients[name].connected,
+				lastConnected: registered_clients[name].lastConnected
 			}
 		})
 		socket.emit("get_clients_successful", {success: true, clients: clients});
 		if(ack) ack({success: true, clients: clients});
+	});
+
+	socket.on("get_past_commands", (ack) => {
+		if(ack) ack({success: true, commands: past_commands});
 	})
 
 	socket.on("command", (data={}, ack) => {
 		console.log("Relaying",data);
 		const {mirror=false, target, command, meta} = data;
+		past_commands.push({timestamp: Date.now(), source: name, target: target, command: command, meta: meta});
 		if(target){
 			if(typeof(target) === "string"){
 				const client = registered_clients[target];
@@ -98,7 +105,6 @@ io.on("connection", (socket) => {
 				socket.broadcast.emit("command", {command: command, meta: meta});
 			}
 			if(ack) ack({success: true});
-			return socket.emit("command_successful");
 		}
 	})
 

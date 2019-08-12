@@ -55,7 +55,7 @@ io.on("connection", (socket) => {
 		Object.keys(registered_clients).forEach(name => {
 			clients[name] = {
 				id: registered_clients[name].id,
-				connected: registered_clients[name].connected]
+				connected: registered_clients[name].connected
 			}
 		})
 		socket.emit("get_clients_successful", {success: true, clients: clients});

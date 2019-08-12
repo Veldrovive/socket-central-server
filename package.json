@@ -1,0 +1,13 @@
+{
+  "name": "pi-socket-server",
+  "version": "0.0.1",
+  "description": "A server that serves to relay socket events from one client to a network",
+  "main": "index.js",
+  "author": "Aidan Dempster",
+  "license": "MIT",
+  "dependencies": {
+    "shortid": "^2.2.14",
+    "socket.io": "^2.2.0",
+    "socket.io-client": "^2.2.0"
+  }
+}

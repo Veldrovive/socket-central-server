@@ -51,12 +51,15 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("get_clients", (ack) => {
-		const clients = [];
+		const clients = {};
 		Object.keys(registered_clients).forEach(name => {
-			clients.push([name, registered_clients[name].id, registered_clients[name].connected]);
+			clients[name] = {
+				id: registered_clients[name].id,
+				connected: registered_clients[name].connected]
+			}
 		})
-		socket.emit("get_clients_successful", clients);
-		if(ack) ack(clients);
+		socket.emit("get_clients_successful", {success: true, clients: clients});
+		if(ack) ack({success: true, clients: clients});
 	})
 
 	socket.on("command", (data={}, ack) => {

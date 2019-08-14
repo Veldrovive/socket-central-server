@@ -7,6 +7,7 @@ const registered_clients = {};
 const past_commands = [];
 
 io.on("connection", (socket) => {
+	let registered = false;
 	let name;
 	console.log("Client connecting");
 
@@ -23,6 +24,7 @@ io.on("connection", (socket) => {
 			socket.emit("registered");
 			if(ack) ack({success: true, newClient: true});
 			console.log("Resistered new client",name);
+			registered = true;
 		}else if(!registered_clients[name].connected){
 			registered_clients[name].socket = socket;
 			registered_clients[name].connected = true;
@@ -30,6 +32,7 @@ io.on("connection", (socket) => {
 			socket.emit("registered");
 			if(ack) ack({success: true, newClient: false});
 			console.log("Registered old client",name);
+			registered = true;
 		}else{
 			socket.emit("register_failed", {success: false, error: 450, message: "Client already connected"});
 			if(ack) ack({success: false, error: 450, message: "Client already connected"});
@@ -39,6 +42,10 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("get_id", (data={}, ack) => {
+		if(!registered){
+			if(ack) ack({success: false, error: 480, message: "Client must register before calling"});
+			return;
+		}
 		let {appName} = data;
 		if(!appName) appName = name;
 		const client = registered_clients[appName];
@@ -52,6 +59,10 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("get_clients", (ack) => {
+		if(!registered){
+			if(ack) ack({success: false, error: 480, message: "Client must register before calling"});
+			return;
+		}
 		const clients = {};
 		Object.keys(registered_clients).forEach(name => {
 			clients[name] = {
@@ -65,10 +76,18 @@ io.on("connection", (socket) => {
 	});
 
 	socket.on("get_past_commands", (ack) => {
+		if(!registered){
+			if(ack) ack({success: false, error: 480, message: "Client must register before calling"});
+			return;
+		}
 		if(ack) ack({success: true, commands: past_commands});
 	})
 
 	socket.on("command", (data={}, ack) => {
+		if(!registered){
+			if(ack) ack({success: false, error: 480, message: "Client must register before calling"});
+			return;
+		}
 		console.log("Relaying",data);
 		const {mirror=false, target, command, meta} = data;
 		past_commands.push({timestamp: Date.now(), source: name, target: target, command: command, meta: meta});
@@ -109,6 +128,9 @@ io.on("connection", (socket) => {
 	})
 
 	socket.on("disconnect", () => {
+		if(!registered){
+			return;
+		}
 		registered_clients[name].connected = false;
 		io.emit("client_disconnect", {name: name, id: registered_clients[name].id});
 		console.log("Client disconnected:",name);

@@ -1,4 +1,4 @@
-var socket = require('socket.io-client')('http://localhost:80');
+var socket = require('socket.io-client')('https://central-socket.herokuapp.com/');
 console.log("Attempting to connect");
 
 socket.on("command", (data) => {
@@ -48,10 +48,12 @@ async function test(){
 
 socket.on("connect", () => {
 	console.log("Connected to server");
-	socket.emit("register", {name: "test"});
-	test();
-})
+	socket.emit("register", {name: "test"}, onRegistered);
+	function onRegistered(){
+		test();
+	}
+});
 
 socket.on("disconnect", () => {
 	console.log("Disconnected from server");
-})
+});

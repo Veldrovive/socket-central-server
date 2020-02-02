@@ -4,8 +4,10 @@ const shortid = require("shortid");
 console.log("Server starting");
 
 const registered_clients = {};
+const past_commands = [];
 
 io.on("connection", (socket) => {
+	let registered = false;
 	let name;
 	console.log("Client connecting");
 
@@ -16,61 +18,104 @@ io.on("connection", (socket) => {
 			registered_clients[name] = {
 				socket: socket,
 				id: shortid.generate(),
-				connected: true
+				connected: true,
+				lastConnected: Date.now()
 			}
 			socket.emit("registered");
+			if(ack) ack({success: true, newClient: true});
 			console.log("Resistered new client",name);
+			registered = true;
 		}else if(!registered_clients[name].connected){
 			registered_clients[name].socket = socket;
 			registered_clients[name].connected = true;
+			registered_clients[name].lastConnected = Date.now();
 			socket.emit("registered");
-			ack(true);
+			if(ack) ack({success: true, newClient: false});
 			console.log("Registered old client",name);
+			registered = true;
 		}else{
-			socket.emit("register_failed", {error: 450, message: "Client already connected"});
+			socket.emit("register_failed", {success: false, error: 450, message: "Client already connected"});
+			if(ack) ack({success: false, error: 450, message: "Client already connected"});
 			socket.disconnect();
 			console.log("Failed to register client",name,"since it was already connected");
 		}
 	})
 
 	socket.on("get_id", (data={}, ack) => {
+		if(!registered){
+			if(ack) ack({success: false, error: 480, message: "Client must register before calling"});
+			return;
+		}
 		let {appName} = data;
 		if(!appName) appName = name;
 		const client = registered_clients[appName];
 		if(client){
 			socket.emit("get_id_successful", client.id);
-			ack({success: true, id: client.id});
+			if(ack) ack({success: true, id: client.id});
 		}else{
 			socket.emit("get_id_failed", {error: 440, message: "Client not registered"});
-			ack({success: false, error: 440, message: "Client not registered"});
+			if(ack) ack({success: false, error: 440, message: "Client not registered"});
 		}
 	})
 
 	socket.on("get_clients", (ack) => {
-		const clients = [];
+		if(!registered){
+			if(ack) ack({success: false, error: 480, message: "Client must register before calling"});
+			return;
+		}
+		const clients = {};
 		Object.keys(registered_clients).forEach(name => {
-			clients.push([name, registered_clients[name].id, registered_clients[name].connected]);
+			clients[name] = {
+				id: registered_clients[name].id,
+				connected: registered_clients[name].connected,
+				lastConnected: registered_clients[name].lastConnected
+			}
 		})
-		socket.emit("get_clients_successful", clients);
-		ack(clients);
+		socket.emit("get_clients_successful", {success: true, clients: clients});
+		if(ack) ack({success: true, clients: clients});
+	});
+
+	socket.on("get_past_commands", (ack) => {
+		if(!registered){
+			if(ack) ack({success: false, error: 480, message: "Client must register before calling"});
+			return;
+		}
+		if(ack) ack({success: true, commands: past_commands});
 	})
 
 	socket.on("command", (data={}, ack) => {
+		if(!registered){
+			if(ack) ack({success: false, error: 480, message: "Client must register before calling"});
+			return;
+		}
 		console.log("Relaying",data);
 		const {mirror=false, target, command, meta} = data;
+		past_commands.push({timestamp: Date.now(), source: name, target: target, command: command, meta: meta});
 		if(target){
-			const client = registered_clients[target];
-			if(!client){
-				ack({success: false, error: 440, message: "Client not registered"});
-				return socket.emit("command_failed", {success: false, error: 440, message: "Client not registered"});
-			}else{
-				if(!client.connected) {
-					ack({success: false, error: 441, message: "Client not connected"});
-					return socket.emit("command_failed", {success: false, error: 441, message: "Client not connected"});
+			if(typeof(target) === "string"){
+				const client = registered_clients[target];
+				if(!client){
+					if(ack) ack({success: false, error: 440, message: "Client not registered"})
+				}else if(!client.connected){
+					if(ack) ack({success: false, error: 441, message: "Client not connected"});
+				}else{
+					if(ack) ack({success: true});
+					client.socket.emit("command", {command: command, meta: meta});
 				}
-				client.socket.emit("command", {command: command, meta: meta});
-				ack({success: true});
-				return socket.emit("command_successful");
+			}else{
+				const targetSuccesses = {};
+				target.forEach(clientName => {
+					const client = registered_clients[clientName];
+					if(!client){
+						targetSuccesses[clientName] = {success: false, error: 440, message: "Client not registered"};
+					}else if(!client.connected){
+						targetSuccesses[clientName] = {success: false, error: 441, message: "Client not connected"};
+					}else{
+						targetSuccesses[clientName] = {success: true};
+						client.socket.emit("command", {command: command, meta: meta});
+					}
+				})
+				if(ack) ack({success: true, targets: targetSuccesses});
 			}
 		}else{
 			if(mirror){
@@ -78,12 +123,14 @@ io.on("connection", (socket) => {
 			}else{
 				socket.broadcast.emit("command", {command: command, meta: meta});
 			}
-			ack({success: true});
-			return socket.emit("command_successful");
+			if(ack) ack({success: true});
 		}
 	})
 
 	socket.on("disconnect", () => {
+		if(!registered){
+			return;
+		}
 		registered_clients[name].connected = false;
 		io.emit("client_disconnect", {name: name, id: registered_clients[name].id});
 		console.log("Client disconnected:",name);

@@ -1,3 +1,17 @@
+let io;
+function isNode(){
+	if (typeof window === 'undefined') {
+		// Then we are most likely in node
+		return true;
+	} else {
+		// Then we are likely in a browser
+		return false;
+	}
+}
+if (isNode()) {
+	io = require('socket.io-client');
+}
+
 class Client{
 	constructor(params){
 		({
@@ -105,4 +119,8 @@ class Client{
 			})
 		})
 	}
+}
+
+if (isNode()) {
+	module.exports = Client;
 }

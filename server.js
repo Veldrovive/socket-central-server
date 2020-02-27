@@ -1,7 +1,15 @@
-const io = require('socket.io')(process.env.PORT || 80);
+const http = require('http');
+const io_server = require('socket.io');
+var server = http.createServer();
+const port = process.env.PORT || 8000;
+const ip = "172.26.2.1"
+server.listen(port, ip);
+const io = io_server.listen(server);
+
+// const io = require('socket.io')(process.env.PORT || 8000);
 const shortid = require("shortid");
 
-console.log("Server starting");
+console.log("Server starting on: ", ip+":"+port);
 
 const registered_clients = {};
 const past_commands = [];

@@ -171,6 +171,7 @@ export class Command extends Payload {
     */
 
     fromApp?: dh.App;
+    user?: dh.User;
     command: string = "";
     callbackId: string = "";
     targets?: string[];
@@ -181,13 +182,14 @@ export class Command extends Payload {
         super();
     }
 
-    setup(data: {fromApp: dh.App | undefined, command: string, meta: any, callbackId: string, info: {targets?: string[], mirror?: boolean}}) {
+    setup(data: {fromApp: dh.App | undefined, command: string, meta: any, callbackId: string, info: {targets?: string[], mirror?: boolean, user?: dh.User}}) {
         this.fromApp = data.fromApp;
         this.command = data.command;
         this.meta = data.meta;
         this.callbackId = data.callbackId;
         this.targets = data.info.targets;
         this.mirror = data.info.mirror;
+        this.user = data.info.user;
         return this;
     }
 
@@ -238,7 +240,7 @@ export class Com {
         return new Error(code, message);
     }
 
-    static command(fromApp: dh.App, command: string, meta: any, callbackId: string, info: {targets?: string[], mirror?: boolean} ): Com {
+    static command(fromApp: dh.App, command: string, meta: any, callbackId: string, info: {targets?: string[], mirror?: boolean, user?: dh.User} ): Com {
         return new Com("command", new Command().setup({fromApp, command, meta, callbackId, info}));
     }
 

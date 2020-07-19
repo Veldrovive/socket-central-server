@@ -4,6 +4,8 @@ import config = require("config");
 import http = require('http');
 import WebSocket = require('ws');
 import crypto = require('crypto');
+import express = require('express');
+import bodyParser = require("body-parser");
 
 import data = require("./db/db");
 import com = require("./ComTypes");
@@ -14,6 +16,7 @@ import dh = require("./data");
 export class SocketServer {
     serverConfig: {ip: string, port: number}
     server?: http.Server;
+    express?: express;
     ws?: WebSocket.Server;
 
     dbConfig: {user: string, host: string, database: string, password: string, port: number};
@@ -37,6 +40,7 @@ export class SocketServer {
         const dbUp = await wsServer._connectDatabase();
         const usersAdded = await wsServer._buildUsers();
         const wsUp = await wsServer._setupWsServer();
+        const httpUp = await wsServer._startHttpRoutes();
 
         return wsServer;
     }
@@ -46,17 +50,43 @@ export class SocketServer {
         const dbUp = await this._connectDatabase();
         const usersAdded = await this._buildUsers();
         const wsUp = await this._setupWsServer();
+        const httpUp = await this._startHttpRoutes();
     }
 
     async _startServer(): Promise<boolean> {
-        this.server = http.createServer();
+        this.express = express();
+        this.express.use(bodyParser.urlencoded({ extended: false }));
+        this.express.use(bodyParser.json())
+        this.server = http.createServer(this.express);
         this.server.listen(this.serverConfig.port, this.serverConfig.ip);
-        console.log("Server is listening")
+        console.log("Server is listening");
         return true;
     }
 
     async _startHttpRoutes() {
+        this.express.get("/ping", (req, res) => {
+            res.send("pong");
+        })
 
+        this.express.post("/relay_command", (req, res) => {
+            try{
+                let body;
+                try {
+                    body = JSON.parse(req.body);
+                } catch (err) {
+                    body = req.body;
+                }
+                const {command, meta, target, token} = body;
+                if(command === undefined) throw "No Command Specified";
+                const user = this.users.find(user => user.token === token);
+                if (!user) throw "No user with specified token";
+                const relay = com.Com.command(undefined, command, meta, "relay", {targets: target, user})
+                this.relayCommand(relay);
+                return res.send("Relayed command: " + command + " with meta " + meta + " to target: " + target);
+            } catch(err) {
+                return res.send("Failed to relay command: " + err);
+            }
+        })
     }
 
     async _connectDatabase(): Promise<boolean> {
@@ -186,9 +216,14 @@ export class SocketServer {
         // @ts-ignore - We know it is command
         const com: com.Command = c.payload
         const fromApp = com.fromApp;
-        if (!fromApp) return false;
-        const user = fromApp.device.user;
-        this.callbacks[com.callbackId] = fromApp;
+        let user;
+        if (com.user) {
+            user = com.user;
+        } else {
+            if (!fromApp) return false;
+            user = fromApp.device.user;
+            this.callbacks[com.callbackId] = fromApp;
+        }
         for (const device of user.devices) {
             for (const app of device.apps) {
                 if (Array.isArray(com.targets) && com.targets.findIndex(target => app.appName === target) === -1) {

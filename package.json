@@ -2,18 +2,37 @@
   "name": "pi-socket-server",
   "version": "0.0.1",
   "description": "A server that serves to relay socket events from one client to a network",
-  "main": "index.js",
+  "main": "server.js",
   "author": "Aidan Dempster",
   "license": "MIT",
   "scripts": {
-  	"start": "node server.js"
+    "build": "tsc",
+    "start": "node build/server.js",
+    "buildS": "yarn run build && yarn run start",
+    "dev": "nodemon -e js,ts --watch db/ --watch server.ts --watch data.ts --watch ComTypes.ts --exec yarn run buildS",
+    "t": "node test_client.js"
   },
   "engines": {
     "node": "12.x"
   },
   "dependencies": {
+    "@types/config": "^0.0.35",
+    "@types/pg": "^7.11.2",
+    "@types/shortid": "0.0.29",
+    "@types/socket.io": "^2.1.4",
+    "@types/ws": "^7.2.5",
+    "config": "^3.2.4",
+    "crypto-js": "^4.0.0",
+    "pg": "^7.12.1",
     "shortid": "^2.2.14",
     "socket.io": "^2.2.0",
-    "socket.io-client": "^2.2.0"
+    "socket.io-client": "^2.2.0",
+    "uuid": "^3.3.3",
+    "ws": "^7.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.19.4",
+    "source-map-support": "^0.5.19",
+    "typescript": "^3.9.5"
   }
 }

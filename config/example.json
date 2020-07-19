@@ -1,0 +1,12 @@
+{
+	"dbConfig": {
+		"user": "exampleUser",
+		"host": "example.server.com",
+		"database": "standardDatabase",
+		"password": "password",
+		"port": 1234
+	},
+	"lexicaConfig": {
+		"auth": "Basic ..."
+	}
+}

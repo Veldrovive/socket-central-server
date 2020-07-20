@@ -1,12 +1,13 @@
 {
+    "server": {
+        "ip": "localhost",
+        "port": 8000
+    },
 	"dbConfig": {
-		"user": "exampleUser",
-		"host": "example.server.com",
-		"database": "standardDatabase",
-		"password": "password",
-		"port": 1234
-	},
-	"lexicaConfig": {
-		"auth": "Basic ..."
+		"user": "postgres",
+		"host": "localhost",
+		"database": "database_name",
+		"password": "database_password",
+		"port": 5432
 	}
 }

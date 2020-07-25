@@ -167,6 +167,8 @@ export class App {
     device: Device;
     socket: WebSocket | undefined;
 
+    interval: any;
+
     db: data.db;
     ss: server.SocketServer;
 
@@ -197,6 +199,7 @@ export class App {
         this.db = db;
         this.appName = "";
         this.ss = ss;
+        this.interval = -1;
     }
 
     /**
@@ -219,6 +222,25 @@ export class App {
     }
 
     /**
+     * Starts a loop that checks if the connection has been forcefully broken such that "close" message is never sent
+     */
+    startHeartbeat() {
+        let isAlive = true;
+        this.socket.on("pong", () => {
+            isAlive = true;
+        })
+        this.interval = setInterval(() => {
+            if (!isAlive) {
+                this.socket.terminate();
+                this.setStatus(false);
+                clearInterval(this.interval);
+            }
+            this.socket.ping();
+            isAlive = false;
+        }, 30000)
+    }
+
+    /**
      * Updates the app to use a new socket and sets the status to online
      * @param socket The socket connection to the client
      */
@@ -235,7 +257,9 @@ export class App {
 
         this.socket.on("close", () => {
             this.setStatus(false);
+            clearInterval(this.interval);
         })
+        this.startHeartbeat();
 
         this.socket.on("open", () => {
             this.setStatus(true);
